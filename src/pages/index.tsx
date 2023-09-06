@@ -65,14 +65,10 @@ export default dynamic(() => Promise.resolve(() => {
       const contractWallet = await WalletClass.watchOnly(contractAddress);
 
       const contractUtxo = (await contractWallet.getAddressUtxos()).find(val => val.token?.tokenId === tokenId)!;
-        console.log(contractUtxo);
-        console.log(contractAddress);
       setContractBalance(contractUtxo.satoshis);
 
       contractWallet.provider.watchAddressStatus(contractAddress!, async () => {
         const contractUtxo = (await contractWallet.getAddressUtxos()).find(val => val.token?.tokenId === tokenId)!;
-        console.log(contractUtxo);
-        console.log(contractAddress);
         setContractBalance(contractUtxo.satoshis);
       });
     })()
@@ -153,9 +149,8 @@ export default dynamic(() => Promise.resolve(() => {
     const txfee = daoPrice;
 
     const daoUtxos = (await popcornStandContract.getUtxos()).map(toCashScript).filter(
-        val => !val.token && val.token.category == daoId
+        val => val.token?.category == daoId
     );
-    console.log(daoUtxos);
     const daoInput = daoUtxos[0];
 
     const userUtxos = (await userWallet.getAddressUtxos()).map(toCashScript).filter(
@@ -170,17 +165,8 @@ export default dynamic(() => Promise.resolve(() => {
     const userSig = new SignatureTemplate(Uint8Array.from(Array(32)));
 
     const func = popcornStandContract.getContractFunction("MakePopcorn");
-    console.log(daoInput);
-    //console.log(userWallet.provider.getRawTransactionObject("a530363c3dc766676723cdfda919473c93647f0a3b899f3e38bfe3747a8881b6", true));
-    console.log(userInput);
-    console.log(userSig);
     const sourceTX = (await userWallet.provider.getRawTransactionObject("a530363c3dc766676723cdfda919473c93647f0a3b899f3e38bfe3747a8881b6", true));
     const sourceAmount = BigInt(sourceTX.vout[0].tokenData.amount);
-    console.log(sourceTX);
-    console.log(sourceAmount);
-    console.log(BigInt(sourceAmount));
-    console.log(daoInput.token.amount);
-    console.log(daoInput.token.amount - BigInt(50));
     const transaction = func().from(daoInput).fromP2PKH(userInput, userSig).to([
       // contract pass-by
       {
@@ -210,7 +196,6 @@ export default dynamic(() => Promise.resolve(() => {
       }
     ]).withAge(1).withoutTokenChange().withHardcodedFee(BigInt(txfee));
 
-    console.log((transaction as any).locktime);
     await transaction.build();
     (transaction as any).outputs[2].to = userWallet.cashaddr;
 
@@ -261,8 +246,6 @@ export default dynamic(() => Promise.resolve(() => {
       return;
     }
 
-    console.log(signResult.signedTransaction);
-
     try {
       await userWallet.submitTransaction(hexToBin(signResult.signedTransaction), true);
     } catch (e) {
@@ -283,7 +266,6 @@ export default dynamic(() => Promise.resolve(() => {
       setWalletBalance(utxos.reduce((prev, cur) => cur.satoshis + prev, 0));
 
       const tokenUtxos = utxos.filter(utxo => utxo.token?.tokenId === tokenId);
-      setTokens(tokenUtxos.map());
     }
   }, [tokenId, contractAddress, connectedAddress, setWalletBalance, setTokens]);
 
@@ -484,5 +466,3 @@ const popcornStandContract = new Contract(
   ],
   Network.MAINNET
 );
-
-console.log(popcornStandContract);
