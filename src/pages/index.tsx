@@ -165,8 +165,9 @@ export default dynamic(() => Promise.resolve(() => {
     const userSig = new SignatureTemplate(Uint8Array.from(Array(32)));
 
     const func = popcornStandContract.getContractFunction("MakePopcorn");
-    const sourceTX = (await userWallet.provider.getRawTransactionObject("a530363c3dc766676723cdfda919473c93647f0a3b899f3e38bfe3747a8881b6", true));
+    const sourceTX = (await userWallet.provider.getRawTransactionObject(daoInput.txid, true));
     const sourceAmount = BigInt(sourceTX.vout[0].tokenData.amount);
+    const destAmount = sourceAmount - BigInt(50);
     const transaction = func().from(daoInput).fromP2PKH(userInput, userSig).to([
       // contract pass-by
       {
@@ -174,7 +175,7 @@ export default dynamic(() => Promise.resolve(() => {
         amount: BigInt(800),
         token: {
           category: daoInput.token?.category!,
-          amount: sourceAmount - BigInt(50),
+          amount: destAmount,
           nft: {
             capability: "minting",
             commitment: ""
@@ -212,33 +213,39 @@ export default dynamic(() => Promise.resolve(() => {
     delete artifact.source;
     delete artifact.bytecode;
 
-    const signResult = await window.paytaca!.signTransaction({
-      transaction: decoded,
-      sourceOutputs: [{
-        ...decoded.inputs[0],
-        lockingBytecode: (cashAddressToLockingBytecode(contractAddress!) as any).bytecode,
-        valueSatoshis: BigInt(daoInput.satoshis),
-        token: daoInput.token && {
-          ...daoInput.token,
-          category: hexToBin(daoInput.token.category),
-          nft: daoInput.token.nft && {
-            ...daoInput.token.nft,
-            commitment: hexToBin(daoInput.token.nft.commitment),
-          },
-        },
-        contract: {
-          abiFunction: (transaction as any).abiFunction,
-          redeemScript: scriptToBytecode(bytecode),
-          artifact: artifact,
-        }
-      }, {
-        ...decoded.inputs[1],
-        lockingBytecode: (cashAddressToLockingBytecode(connectedAddress!) as any).bytecode,
-        valueSatoshis: BigInt(userInput.satoshis),
-      }],
-      broadcast: false,
-      userPrompt: "Mint new NFT"
-    });
+    const txobj = {
+          transaction: decoded,
+          sourceOutputs: [{
+            ...decoded.inputs[0],
+            lockingBytecode: (cashAddressToLockingBytecode(contractAddress!) as any).bytecode,
+            valueSatoshis: BigInt(daoInput.satoshis),
+            token: daoInput.token && {
+              ...daoInput.token,
+              category: hexToBin(daoInput.token.category),
+              amount: sourceAmount,
+              nft: daoInput.token.nft && {
+                ...daoInput.token.nft,
+                commitment: hexToBin(daoInput.token.nft.commitment),
+              },
+            },
+            contract: {
+              abiFunction: (transaction as any).abiFunction,
+              redeemScript: scriptToBytecode(bytecode),
+              artifact: artifact,
+            }
+          }, {
+            ...decoded.inputs[1],
+            lockingBytecode: (cashAddressToLockingBytecode(connectedAddress!) as any).bytecode,
+            valueSatoshis: BigInt(userInput.satoshis),
+          }],
+          broadcast: false,
+          userPrompt: "Mint new NFT"
+    };
+    console.log(txobj);
+
+    const signResult = await window.paytaca!.signTransaction(txobj);
+
+    console.log(signResult);
 
     if (signResult === undefined) {
       setError("User rejected the transaction signing request");
