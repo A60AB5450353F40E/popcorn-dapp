@@ -153,7 +153,7 @@ export default dynamic(() => Promise.resolve(() => {
     const txfee = daoPrice;
 
     const daoUtxos = (await popcornStandContract.getUtxos()).map(toCashScript).filter(
-        val => val.token.category == daoId
+        val => !val.token && val.token.category == daoId
     );
     console.log(daoUtxos);
     const daoInput = daoUtxos[0];
