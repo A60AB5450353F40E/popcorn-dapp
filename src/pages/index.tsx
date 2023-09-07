@@ -175,7 +175,7 @@ export default dynamic(() => Promise.resolve(() => {
         amount: BigInt(800),
         token: {
           category: daoInput.token?.category!,
-          amount: destAmount,
+          amount: BigInt(50), //placeholder, can't set here due to js int limitations
           nft: {
             capability: "minting",
             commitment: ""
@@ -206,6 +206,8 @@ export default dynamic(() => Promise.resolve(() => {
       setTimeout(() => setError(""), 10000);
       return;
     }
+    //console.log(decoded);
+    decoded.outputs[0].token!.amount = destAmount;
     decoded.inputs[1].unlockingBytecode = Uint8Array.from([]);
 
     const bytecode = (transaction as any).redeemScript;
@@ -256,14 +258,15 @@ export default dynamic(() => Promise.resolve(() => {
     try {
       await userWallet.submitTransaction(hexToBin(signResult.signedTransaction), true);
     } catch (e) {
-      if ((e as any).message.indexOf('txn-mempool-conflict (code 18)') !== -1) {
-        setError("Someone was faster than you at minting this NFT, please try again with the next one");
-        setTimeout(() => setError(""), 10000);
+      if ((e as any).message.indexOf('txn-mempool-conflict (code 18)') !== -1
+      || (e as any).message.indexOf('non-BIP68-final (code 64)') !== -1) {
+        setError("Someone was faster than you at minting this NFT. Please wait for a block to get mined before trying again, minting contract allows only 1 box / block.");
+        setTimeout(() => setError(""), 20000);
         return;
       } else {
         console.trace(e);
         setError((e as any).message);
-        setTimeout(() => setError(""), 10000);
+        setTimeout(() => setError(""), 20000);
         return;
       }
     }
